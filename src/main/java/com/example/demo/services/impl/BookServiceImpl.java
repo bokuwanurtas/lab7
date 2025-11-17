@@ -1,19 +1,26 @@
 package com.example.demo.services.impl;
 
-
 import com.example.demo.dto.BookDto;
+import com.example.demo.mapper.BookMapper;
+import com.example.demo.models.Author;
 import com.example.demo.models.Book;
+import com.example.demo.repositories.AuthorRepository;
 import com.example.demo.repositories.BookRepository;
 import com.example.demo.services.BookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class BookServiceImpl implements BookService {
+
     private final BookRepository bookRepository;
+    private final AuthorRepository authorRepository;
+    private final BookMapper bookMapper;
 
     @Override
     public List<BookDto> getBooks() {
@@ -22,7 +29,7 @@ public class BookServiceImpl implements BookService {
         List<BookDto> bookDtoList = new ArrayList<>();
 
         books.forEach(book -> {
-            BookDto dto = toDto(book);
+            BookDto dto = bookMapper.toDto(book);
             bookDtoList.add(dto);
         });
 
@@ -31,11 +38,15 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public BookDto addBook(BookDto dto) {
-        Book book = toEntity(dto);
+        Book book = bookMapper.toEntity(dto);
+
+        if (dto.getAuthor() != null && dto.getAuthor().getId() != null) {
+            Author author = authorRepository.findById(dto.getAuthor().getId()).orElse(null);
+            book.setAuthor(author);
+        }
 
         Book createdBook = bookRepository.save(book);
-
-        BookDto createdBookDto = toDto(createdBook);
+        BookDto createdBookDto = bookMapper.toDto(createdBook);
 
         return createdBookDto;
     }
@@ -48,7 +59,7 @@ public class BookServiceImpl implements BookService {
             return null;
         }
 
-        BookDto dto = toDto(book);
+        BookDto dto = bookMapper.toDto(book);
         return dto;
     }
 
@@ -60,11 +71,17 @@ public class BookServiceImpl implements BookService {
             return null;
         }
 
-        Book book = toEntity(dto);
+        Book book = bookMapper.toEntity(dto);
+        book.setId(id);
+
+        if (dto.getAuthor() != null && dto.getAuthor().getId() != null) {
+            Author author = authorRepository.findById(dto.getAuthor().getId()).orElse(null);
+            book.setAuthor(author);
+        }
 
         Book updatedBook = bookRepository.save(book);
+        BookDto updatedBookDto = bookMapper.toDto(updatedBook);
 
-        BookDto updatedBookDto = toDto(updatedBook);
         return updatedBookDto;
     }
 
@@ -77,30 +94,6 @@ public class BookServiceImpl implements BookService {
         }
 
         bookRepository.deleteById(id);
-
         return true;
-    }
-
-    private BookDto toDto(Book book) {
-        BookDto bookDto = BookDto
-                .builder()
-                .id(book.getId())
-                .bookTitle(book.getTitle())
-                .bookAuthor(book.getAuthor())
-                .price(book.getPrice())
-                .genre(book.getGenre())
-                .build();
-
-        return bookDto;
-    }
-
-    private Book toEntity(BookDto dto) {
-        Book book = new Book();
-        book.setId(dto.getId());
-        book.setTitle(dto.getBookTitle());
-        book.setAuthor(dto.getBookAuthor());
-        book.setPrice(dto.getPrice());
-        book.setGenre(dto.getGenre());
-        return book;
     }
 }
